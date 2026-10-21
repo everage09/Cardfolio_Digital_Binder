@@ -1,9 +1,13 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
+export type WishlistSortMode = 'pack' | 'rarity-desc' | 'rarity-asc' | 'idol-ko' | 'idol-ja'
+
 export interface WishlistState {
   // cardId -> 목표 수량 (1 이상 정수). 위시리스트에 없는 카드는 키가 없음.
   wishes: Record<string, number>
+  sortMode: WishlistSortMode
+  setSortMode: (mode: WishlistSortMode) => void
 
   isWished: (cardId: string) => boolean
   getWishQuantity: (cardId: string) => number
@@ -21,7 +25,12 @@ export const useWishlistStore = create<WishlistState>()(
   persist(
     (set, get) => ({
       wishes: {},
+      sortMode: 'pack',
       lastBulkAddition: null,
+
+      setSortMode: (sortMode: WishlistSortMode) => {
+        set({ sortMode })
+      },
 
       isWished: (cardId: string) => {
         return cardId in get().wishes
@@ -94,7 +103,7 @@ export const useWishlistStore = create<WishlistState>()(
     {
       name: 'cardfolio-wishlist-storage',
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ wishes }) => ({ wishes }),
+      partialize: ({ wishes, sortMode }) => ({ wishes, sortMode }),
     }
   )
 )

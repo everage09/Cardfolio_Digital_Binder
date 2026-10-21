@@ -4,9 +4,11 @@ import { toPng } from 'html-to-image'
 import { CardsData, Card } from '../types/card'
 import { CardModal } from '../components/CardModal'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import { useWishlistStore } from '../stores/useWishlistStore'
+import { useWishlistStore, WishlistSortMode } from '../stores/useWishlistStore'
 import { WishlistGrid } from '../features/wishlist/WishlistGrid'
 import { ExportViewForCapture } from '../features/wishlist/WishlistExportView'
+import { getSortedPacks } from '../utils/packCategories'
+import { sortWishedCards, WishedCardItem } from '../utils/wishlistSort'
 
 interface WishlistPageProps {
   data: CardsData
@@ -35,30 +37,36 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({ data }) => {
   const titleRef = useRef<HTMLHeadingElement>(null)
   const clearButtonRef = useRef<HTMLButtonElement>(null)
   const wishes = useWishlistStore((state) => state.wishes)
+  const sortMode = useWishlistStore((state) => state.sortMode)
+  const setSortMode = useWishlistStore((state) => state.setSortMode)
   const clearWishlist = useWishlistStore((state) => state.clearWishlist)
 
-  // 위시리스트에 있는 카드를 전체 데이터에서 조회 (팩 순서 유지)
+  // 7대 시리즈 공식 순서로 정렬된 팩 목록
+  const sortedPacks = useMemo(() => getSortedPacks(data.packs), [data.packs])
+
+  // 위시리스트에 있는 카드를 정렬된 팩 목록에서 수집 (팩 순서 유지)
   const wishedCards = useMemo(() => {
-    const result: { card: Card; packName: string }[] = []
-    for (const pack of data.packs) {
+    const result: WishedCardItem[] = []
+    sortedPacks.forEach((pack, packIndex) => {
       for (const card of pack.cards) {
         if (card.id in wishes) {
-          result.push({ card, packName: pack.name })
+          result.push({ card, packName: pack.name, packIndex })
         }
       }
-    }
+    })
     return result
-  }, [data.packs, wishes])
+  }, [sortedPacks, wishes])
+
+  // 사용자가 선택한 정렬 기준에 따라 화면 표시용 목록 정렬
+  const displayedCards = useMemo(() => {
+    return sortWishedCards(wishedCards, sortMode)
+  }, [wishedCards, sortMode])
 
   const wishCount = wishedCards.length
 
   /**
    * PNG 내보내기 — 동적 마운트 패턴
-   * 1. 임시 div를 body에 추가 (opacity:0, 화면 내 위치)
-   * 2. ExportViewForCapture를 createRoot로 렌더링
-   * 3. 마운트 완료 후 모든 이미지 로드 대기
-   * 4. html-to-image로 캡처 → 다운로드
-   * 5. 임시 div 제거
+   * (이미지 내보내기는 정렬 모드와 무관하게 항상 부스터 팩 순서인 wishedCards 사용)
    */
   const handleExport = useCallback(async () => {
     if (wishCount === 0) return
@@ -120,6 +128,27 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({ data }) => {
           <div className="wishlist-header-actions">
             {wishCount > 0 && (
               <>
+                {/* 정렬 드롭다운: [이미지로 저장] 왼쪽에 배치 */}
+                <div className="sort-control-group wishlist-sort-control">
+                  <label htmlFor="wishlist-sort-select" className="sort-label">
+                    정렬
+                  </label>
+                  <div className="sort-select-wrapper">
+                    <select
+                      id="wishlist-sort-select"
+                      className="sort-select"
+                      value={sortMode}
+                      onChange={(e) => setSortMode(e.target.value as WishlistSortMode)}
+                    >
+                      <option value="pack">부스터 팩 순</option>
+                      <option value="rarity-desc">등급 높은 순</option>
+                      <option value="rarity-asc">등급 낮은 순</option>
+                      <option value="idol-ko">아이돌 이름순 (가나다)</option>
+                      <option value="idol-ja">아이돌 이름순 (가나순)</option>
+                    </select>
+                  </div>
+                </div>
+
                 <button
                   className="wishlist-export-btn"
                   onClick={handleExport}
@@ -151,7 +180,7 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({ data }) => {
         </div>
       ) : (
         <WishlistGrid
-          wishedCards={wishedCards}
+          wishedCards={displayedCards}
           onSelectCard={(card) => setSelectedCard(card)}
         />
       )}

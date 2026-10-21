@@ -1413,8 +1413,12 @@ optgroup option {
 .wishlist-header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
+}
+
+.wishlist-sort-control {
+  margin-right: 4px;
 }
 
 /* 이미지 내보내기 버튼 */
