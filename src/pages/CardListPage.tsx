@@ -6,7 +6,7 @@ import { CardModal } from '../components/CardModal'
 import { getSortedPacks, groupPacksByCategory } from '../utils/packCategories'
 import { useCollectionStore, SortMode } from '../stores/useCollectionStore'
 import { CollectionFilter } from '../features/collection/CollectionFilter'
-import { useCardBrowseStore } from '../stores/useCardBrowseStore'
+import { useCardBrowseStore, PageSizeOption } from '../stores/useCardBrowseStore'
 import { RaritySummary } from '../features/collection/RaritySummary'
 import { BulkCollectionControls } from '../features/collection/BulkCollectionControls'
 import { IdolSearch } from '../components/IdolSearch'
@@ -18,7 +18,13 @@ interface CardListPageProps {
   data: CardsData
 }
 
-const PAGE_SIZE = 60
+const PAGE_SIZE_OPTIONS: { label: string; value: PageSizeOption }[] = [
+  { label: '30장씩', value: 30 },
+  { label: '60장씩', value: 60 },
+  { label: '120장씩', value: 120 },
+  { label: '전체 보기', value: 'all' },
+]
+
 const formatCount = (count: number) => count.toLocaleString('ko-KR')
 
 export const CardListPage: React.FC<CardListPageProps> = ({ data }) => {
@@ -27,7 +33,7 @@ export const CardListPage: React.FC<CardListPageProps> = ({ data }) => {
   const {
     filterMode, setFilterMode, selectedRarity, setSelectedRarity,
     searchQuery, setSearchQuery, includeGroupCards, setIncludeGroupCards,
-    page, setPage, resetFilters,
+    page, setPage, pageSize, setPageSize, resetFilters,
   } = useCardBrowseStore()
   const resultsRef = useRef<HTMLDivElement>(null)
   const isSearching = splitIdolSearchQuery(searchQuery).length > 0
@@ -73,11 +79,14 @@ export const CardListPage: React.FC<CardListPageProps> = ({ data }) => {
     quantities, filterMode, selectedRarity, sortMode,
   }), [searchedPacks, quantities, filterMode, selectedRarity, sortMode])
   const resultCount = filteredPacks.reduce((sum, pack) => sum + pack.cards.length, 0)
-  const pageCount = scope.type === 'pack' ? 1 : Math.max(1, Math.ceil(resultCount / PAGE_SIZE))
+
+  const isAllPages = pageSize === 'all'
+  const numericPageSize = isAllPages ? resultCount || 1 : pageSize
+  const pageCount = isAllPages ? 1 : Math.max(1, Math.ceil(resultCount / numericPageSize))
   const currentPage = Math.min(page, pageCount)
-  const visiblePacks = useMemo(() => scope.type === 'pack'
+  const visiblePacks = useMemo(() => isAllPages
     ? filteredPacks
-    : paginatePacks(filteredPacks, currentPage, PAGE_SIZE), [scope.type, filteredPacks, currentPage])
+    : paginatePacks(filteredPacks, currentPage, numericPageSize), [isAllPages, filteredPacks, currentPage, numericPageSize])
   const categoryNames = useMemo(() => new Map(groupPacksByCategory(sortedPacks)
     .flatMap((group) => group.packs.map((pack) => [pack.id, group.categoryName] as const))), [sortedPacks])
   const collectionPercentage = searchedCards.length > 0
@@ -162,17 +171,39 @@ export const CardListPage: React.FC<CardListPageProps> = ({ data }) => {
                   ownedCount={ownedUniqueCount}
                   unownedCount={searchedCards.length - ownedUniqueCount}
                 />
-                <div className="sort-control-group">
-                  <label htmlFor="card-sort-select" className="sort-label">정렬</label>
-                  <div className="sort-select-wrapper">
-                    <select id="card-sort-select" className="sort-select" value={sortMode} onChange={(event) => {
-                      setSortMode(event.target.value as SortMode)
-                      setPage(1)
-                    }}>
-                      <option value="default">기본 순서 (번호순)</option>
-                      <option value="rarity-desc">등급 높은 순</option>
-                      <option value="rarity-asc">등급 낮은 순</option>
-                    </select>
+                <div className="collection-controls-right">
+                  <div className="sort-control-group">
+                    <label htmlFor="card-sort-select" className="sort-label">정렬</label>
+                    <div className="sort-select-wrapper">
+                      <select id="card-sort-select" className="sort-select" value={sortMode} onChange={(event) => {
+                        setSortMode(event.target.value as SortMode)
+                        setPage(1)
+                      }}>
+                        <option value="default">기본 순서 (번호순)</option>
+                        <option value="rarity-desc">등급 높은 순</option>
+                        <option value="rarity-asc">등급 낮은 순</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="sort-control-group page-size-control-group">
+                    <label htmlFor="page-size-select" className="sort-label">표시</label>
+                    <div className="sort-select-wrapper">
+                      <select
+                        id="page-size-select"
+                        className="sort-select"
+                        value={pageSize}
+                        onChange={(event) => {
+                          const val = event.target.value
+                          setPageSize(val === 'all' ? 'all' : (Number(val) as PageSizeOption))
+                        }}
+                      >
+                        {PAGE_SIZE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -211,7 +242,7 @@ export const CardListPage: React.FC<CardListPageProps> = ({ data }) => {
               )}
 
               <BulkCollectionControls
-                key={JSON.stringify([scope.value, searchQuery, filterMode, selectedRarity, sortMode, includeGroupCards])}
+                key={JSON.stringify([scope.value, searchQuery, filterMode, selectedRarity, sortMode, includeGroupCards, pageSize])}
                 visibleCards={visiblePacks.flatMap((pack) => pack.cards)}>
                 {({ selectionMode, selectedIds, onToggleSelection }) => <>
                   {isSearching && mappedCardCount === 0 ? (
@@ -237,7 +268,7 @@ export const CardListPage: React.FC<CardListPageProps> = ({ data }) => {
                               <h3>{pack.name}</h3>
                               <span className="pack-card-count-badge">
                                 {pack.cards.length === filteredPacks.find((item) => item.id === pack.id)?.cards.length
-                                  ? `${pack.cards.length}장`
+                                   ? `${pack.cards.length}장`
                                   : `${pack.cards.length} / ${filteredPacks.find((item) => item.id === pack.id)?.cards.length}장`}
                               </span>
                               <button type="button" onClick={() => changeScope(pack.id)}>이 팩만 보기</button>
@@ -247,12 +278,12 @@ export const CardListPage: React.FC<CardListPageProps> = ({ data }) => {
                             selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelection={onToggleSelection} />
                         </section>
                       ))}
-                      {pageCount > 1 && (
+                      {!isAllPages && pageCount > 1 && (
                         <nav className="card-pagination" aria-label="카드 목록 페이지">
                           <button type="button" disabled={currentPage === 1} onClick={() => changePage(currentPage - 1)}>이전</button>
                           <div>
                             <span aria-live="polite">{currentPage} / {pageCount} 페이지</span>
-                            <small>{formatCount((currentPage - 1) * PAGE_SIZE + 1)}–{formatCount(Math.min(currentPage * PAGE_SIZE, resultCount))} / {formatCount(resultCount)}장</small>
+                            <small>{formatCount((currentPage - 1) * numericPageSize + 1)}–{formatCount(Math.min(currentPage * numericPageSize, resultCount))} / {formatCount(resultCount)}장</small>
                           </div>
                           <button type="button" disabled={currentPage === pageCount} onClick={() => changePage(currentPage + 1)}>다음</button>
                         </nav>

@@ -53,6 +53,9 @@ export function filterAndSortPacks(packs: Pack[], filters: CardFilters): Pack[] 
 
 /** 팩 경계와 순서를 유지하면서 여러 팩의 카드를 한 페이지로 나눈다. */
 export function paginatePacks(packs: Pack[], page: number, pageSize: number): Pack[] {
+  if (pageSize <= 0 || !Number.isFinite(pageSize)) {
+    return packs
+  }
   let skip = Math.max(0, page - 1) * pageSize
   let remaining = pageSize
   return packs.flatMap((pack) => {
