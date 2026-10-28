@@ -4,6 +4,9 @@ import { toPng } from 'html-to-image'
 import { CardsData, Card } from '../types/card'
 import { CardModal } from '../components/CardModal'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { IdolSearch } from '../components/IdolSearch'
+import idolData from '../data/idol.json'
+import { findMatchingIdolIds, splitIdolSearchQuery } from '../utils/idolSearch'
 import { useWishlistStore, WishlistSortMode } from '../stores/useWishlistStore'
 import { WishlistGrid } from '../features/wishlist/WishlistGrid'
 import { ExportViewForCapture } from '../features/wishlist/WishlistExportView'
@@ -34,6 +37,7 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({ data }) => {
   const [selectedCard, setSelectedCard] = useState<Card | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const titleRef = useRef<HTMLHeadingElement>(null)
   const clearButtonRef = useRef<HTMLButtonElement>(null)
   const wishes = useWishlistStore((state) => state.wishes)
@@ -57,19 +61,37 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({ data }) => {
     return result
   }, [sortedPacks, wishes])
 
+  const wishCount = wishedCards.length
+  const isSearching = splitIdolSearchQuery(searchQuery).length > 0
+  const hasIdolData = useMemo(
+    () => wishedCards.some((item) => item.card.idolIds?.length),
+    [wishedCards],
+  )
+  const matchingIdolIds = useMemo(
+    () => findMatchingIdolIds(idolData.idols, searchQuery),
+    [searchQuery],
+  )
+
+  // 검색어 필터링 (단체 카드는 항상 포함)
+  const filteredWishedCards = useMemo(() => {
+    if (!isSearching) return wishedCards
+    return wishedCards.filter((item) =>
+      item.card.idolIds?.some((id) => matchingIdolIds.has(id)),
+    )
+  }, [wishedCards, isSearching, matchingIdolIds])
+
   // 사용자가 선택한 정렬 기준에 따라 화면 표시용 목록 정렬
   const displayedCards = useMemo(() => {
-    return sortWishedCards(wishedCards, sortMode)
-  }, [wishedCards, sortMode])
-
-  const wishCount = wishedCards.length
+    return sortWishedCards(filteredWishedCards, sortMode)
+  }, [filteredWishedCards, sortMode])
 
   /**
    * PNG 내보내기 — 동적 마운트 패턴
-   * (이미지 내보내기는 정렬 모드와 무관하게 항상 부스터 팩 순서인 wishedCards 사용)
+   * (A안: 검색 중일 때는 검색된 카드들만 모아서 팩 순서대로 PNG 내보내기)
    */
   const handleExport = useCallback(async () => {
-    if (wishCount === 0) return
+    const exportCards = isSearching ? filteredWishedCards : wishedCards
+    if (exportCards.length === 0) return
     setIsExporting(true)
 
     // 임시 컨테이너: 화면에는 보이지 않지만 렌더링은 정상 수행
@@ -85,7 +107,7 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({ data }) => {
       const captureEl = await new Promise<HTMLDivElement>((resolve) => {
         root.render(
           <ExportViewForCapture
-            wishedCards={wishedCards}
+            wishedCards={exportCards}
             wishes={wishes}
             onMount={resolve}
           />,
@@ -115,18 +137,32 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({ data }) => {
       tempContainer.remove()
       setIsExporting(false)
     }
-  }, [wishCount, wishedCards, wishes])
+  }, [isSearching, filteredWishedCards, wishedCards, wishes])
 
   return (
     <div className="wishlist-page">
       <section className="wishlist-dashboard">
+        {wishCount > 0 && (
+          <div className="wishlist-search-row">
+            <IdolSearch
+              idols={idolData.idols}
+              value={searchQuery}
+              onChange={setSearchQuery}
+              hasIdolData={hasIdolData}
+              scopeName="위시 리스트"
+            />
+          </div>
+        )}
+
         <div className="wishlist-header-bar">
           <div className="wishlist-title-area">
             <h2 ref={titleRef} tabIndex={-1} className="wishlist-title">위시 리스트</h2>
-            <span className="wishlist-count-badge">{wishCount}장</span>
+            <span className="wishlist-count-badge">
+              {isSearching ? `${filteredWishedCards.length} / ${wishCount}장` : `${wishCount}장`}
+            </span>
           </div>
           <div className="wishlist-header-actions">
-            {wishCount > 0 && (
+            {filteredWishedCards.length > 0 && (
               <>
                 {/* 정렬 드롭다운: [이미지로 저장] 왼쪽에 배치 */}
                 <div className="sort-control-group wishlist-sort-control">
@@ -153,21 +189,34 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({ data }) => {
                   className="wishlist-export-btn"
                   onClick={handleExport}
                   disabled={isExporting}
-                  title="위시 리스트를 PNG 이미지로 저장"
+                  title={isSearching ? '검색된 위시 카드를 PNG 이미지로 저장' : '위시 리스트를 PNG 이미지로 저장'}
                 >
                   {isExporting ? '저장 중…' : '🖼 이미지로 저장'}
                 </button>
-                <button
-                  ref={clearButtonRef}
-                  className="wishlist-clear-btn"
-                  onClick={() => setIsClearDialogOpen(true)}
-                >
-                  전체 삭제
-                </button>
               </>
+            )}
+            {wishCount > 0 && (
+              <button
+                ref={clearButtonRef}
+                className="wishlist-clear-btn"
+                onClick={() => setIsClearDialogOpen(true)}
+              >
+                전체 삭제
+              </button>
             )}
           </div>
         </div>
+
+        {isSearching && (
+          <div className="idol-search-results wishlist-search-results" role="status" aria-live="polite">
+            <span>
+              <strong>“{searchQuery.trim()}”</strong> 검색 결과 <strong>{filteredWishedCards.length}장</strong> / 전체 {wishCount}장
+            </span>
+            <div className="result-actions">
+              <button type="button" onClick={() => setSearchQuery('')}>검색 해제</button>
+            </div>
+          </div>
+        )}
       </section>
 
       {wishCount === 0 ? (
@@ -178,6 +227,11 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({ data }) => {
             카드 목록 화면에서 카드를 클릭한 뒤 ♡ 버튼을 눌러 추가해 보세요.
           </p>
         </div>
+      ) : filteredWishedCards.length === 0 ? (
+        <div className="empty-state idol-search-empty">
+          <p>“{searchQuery.trim()}” 검색 결과에 해당하는 위시 카드가 없습니다.</p>
+          <button type="button" onClick={() => setSearchQuery('')}>검색 해제</button>
+        </div>
       ) : (
         <WishlistGrid
           wishedCards={displayedCards}
@@ -186,20 +240,22 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({ data }) => {
       )}
 
       <CardModal card={selectedCard} onClose={() => setSelectedCard(null)} />
-      {isClearDialogOpen && <ConfirmDialog
-        title="위시 리스트를 모두 비울까요?"
-        description={`등록된 ${Object.keys(wishes).length.toLocaleString('ko-KR')}종의 카드와 목표 수량이 삭제됩니다. 삭제한 위시 리스트는 복구할 수 없습니다.`}
-        confirmLabel="전체 삭제"
-        onCancel={() => {
-          setIsClearDialogOpen(false)
-          requestAnimationFrame(() => clearButtonRef.current?.focus({ preventScroll: true }))
-        }}
-        onConfirm={() => {
-          clearWishlist()
-          setIsClearDialogOpen(false)
-          requestAnimationFrame(() => titleRef.current?.focus({ preventScroll: true }))
-        }}
-      />}
+      {isClearDialogOpen && (
+        <ConfirmDialog
+          title="위시 리스트를 모두 비울까요?"
+          description={`등록된 ${Object.keys(wishes).length.toLocaleString('ko-KR')}종의 카드와 목표 수량이 삭제됩니다. 삭제한 위시 리스트는 복구할 수 없습니다.`}
+          confirmLabel="전체 삭제"
+          onCancel={() => {
+            setIsClearDialogOpen(false)
+            requestAnimationFrame(() => clearButtonRef.current?.focus({ preventScroll: true }))
+          }}
+          onConfirm={() => {
+            clearWishlist()
+            setIsClearDialogOpen(false)
+            requestAnimationFrame(() => titleRef.current?.focus({ preventScroll: true }))
+          }}
+        />
+      )}
     </div>
   )
 }
