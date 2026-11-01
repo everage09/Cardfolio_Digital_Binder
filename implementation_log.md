@@ -207,3 +207,12 @@ pm run build 정상 통과.
   - 인물 및 유닛, 별칭 검색 지원 및 단체 카드 항상 포함 검색.
   - 검색 중일 때 검색 결과 안내 바(`N장 / 전체 M장`) 및 [검색 해제] 버튼 제공, 검색 결과 없을 시 전용 안내 UI 표시.
   - 이미지 저장 시 검색된 카드들만 모아서 부스터 팩 순서대로 PNG 내보내기 지원 (A안 반영).
+
+
+### 2026-11-01 — 미사용 레거시 컴포넌트 및 CSS 정리
+
+- **미사용 컴포넌트 정리**:
+  - 과거 수집 진척도 표시용으로 사용되다 상단 고정 헤더 개편 이후 어디에서도 참조되지 않던 `src/features/collection/CollectionProgress.tsx` 제거.
+- **스타일시트 정리 (`app.css`)**:
+  - `CollectionProgress` 전용 레거시 스타일(`.collection-progress-container`, `.progress-stats`, `.progress-bar-track` 등 약 70줄) 제거.
+- **검증**: `npm run typecheck` 및 `npm run build` 정상 통과.
