@@ -216,3 +216,11 @@ pm run build 정상 통과.
 - **스타일시트 정리 (`app.css`)**:
   - `CollectionProgress` 전용 레거시 스타일(`.collection-progress-container`, `.progress-stats`, `.progress-bar-track` 등 약 70줄) 제거.
 - **검증**: `npm run typecheck` 및 `npm run build` 정상 통과.
+
+
+### 2026-11-03 — 패키지 보안 취약점 업데이트
+
+- **의존성 보안 패치 (`package.json`, `package-lock.json`)**:
+  - `npm audit`에서 검출된 `vite` 및 `source-map-js` 보안 취약점 해결 (`vite` 8.3.0 -> 8.3.5 업데이트).
+  - 의존성 취약점 0건 달성 (`found 0 vulnerabilities`).
+- **검증**: `npm run typecheck` 및 `npm run build` 정상 통과.
