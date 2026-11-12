@@ -224,3 +224,15 @@ pm run build 정상 통과.
   - `npm audit`에서 검출된 `vite` 및 `source-map-js` 보안 취약점 해결 (`vite` 8.3.0 -> 8.3.5 업데이트).
   - 의존성 취약점 0건 달성 (`found 0 vulnerabilities`).
 - **검증**: `npm run typecheck` 및 `npm run build` 정상 통과.
+
+### 2026-11-12 — Cloudflare Pages 무료 호스팅 준비: 공식 CDN 이미지 직접 참조 전환
+
+- **배경**: Cloudflare Pages 무료 정적 호스팅 배포를 위한 사전 준비 작업.
+  - 카드 이미지를 로컬 `images/` 폴더 대신 공식 사이트(`cardfolio.idolmaster-official.jp`) CDN URL에서 직접 로드하도록 전환.
+  - 공식 CDN 핫링킹 허용 여부 사전 검증 완료 (외부 도메인 `<img>` 태그 로딩 테스트 통과).
+- **변경 사항**:
+  - `scripts/build-card-data.ts`: `imagePath` 필드를 로컬 경로(`/images/...`)에서 공식 CDN URL(`https://cardfolio.idolmaster-official.jp/images/cardlist/...`)로 교체. `sourceUrl`과 동일한 값 사용.
+  - `vite.config.ts`: 로컬 이미지 서빙 및 `dist/images/` 복사 담당 커스텀 플러그인(`cardfolio-images`) 제거.
+  - `.gitignore`: `src/data/cards.json` 제외 항목 삭제 → git에 포함하여 CI 빌드 시 사용 가능하게 함.
+  - `src/data/cards.json`: `imagePath`가 공식 CDN URL로 갱신된 상태로 재생성 후 git 포함 대상으로 전환.
+- **검증**: `npm run build:card-data`, `npm run typecheck`, `npm run build` 정상 통과.

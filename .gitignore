@@ -14,10 +14,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# ===== 생성 데이터 (npm run build:card-data 로 재생성) =====
-src/data/cards.json
-
-# ===== 카드 이미지 (manifest + 스크립트로 재생성/보관) =====
+# ===== 카드 이미지 (로컬 보관, 저작권 이슈로 git 미포함) =====
 images/
 
 # ===== 환경 변수 =====
