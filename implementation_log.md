@@ -224,3 +224,36 @@ pm run build 정상 통과.
   - `npm audit`에서 검출된 `vite` 및 `source-map-js` 보안 취약점 해결 (`vite` 8.3.0 -> 8.3.5 업데이트).
   - 의존성 취약점 0건 달성 (`found 0 vulnerabilities`).
 - **검증**: `npm run typecheck` 및 `npm run build` 정상 통과.
+
+### 2026-11-12 — Cloudflare Pages 무료 호스팅 준비: 공식 CDN 이미지 직접 참조 전환
+
+- **배경**: Cloudflare Pages 무료 정적 호스팅 배포를 위한 사전 준비 작업.
+  - 카드 이미지를 로컬 `images/` 폴더 대신 공식 사이트(`cardfolio.idolmaster-official.jp`) CDN URL에서 직접 로드하도록 전환.
+  - 공식 CDN 핫링킹 허용 여부 사전 검증 완료 (외부 도메인 `<img>` 태그 로딩 테스트 통과).
+- **변경 사항**:
+  - `scripts/build-card-data.ts`: `imagePath` 필드를 로컬 경로(`/images/...`)에서 공식 CDN URL(`https://cardfolio.idolmaster-official.jp/images/cardlist/...`)로 교체. `sourceUrl`과 동일한 값 사용.
+  - `vite.config.ts`: 로컬 이미지 서빙 및 `dist/images/` 복사 담당 커스텀 플러그인(`cardfolio-images`) 제거.
+  - `.gitignore`: `src/data/cards.json` 제외 항목 삭제 → git에 포함하여 CI 빌드 시 사용 가능하게 함.
+  - `src/data/cards.json`: `imagePath`가 공식 CDN URL로 갱신된 상태로 재생성 후 git 포함 대상으로 전환.
+- **검증**: `npm run build:card-data`, `npm run typecheck`, `npm run build` 정상 통과.
+
+
+### 2026-11-13 — 보유 수량 및 위시리스트 데이터 백업/복원(내보내기·불러오기) 기능 구현
+
+- **배경**: 별도의 DB/서버 없이 개인 브라우저 LocalStorage에만 저장되는 데이터를 다른 기기나 브라우저로 백업/이전할 수 있도록 JSON 기반의 데이터 이식성 기능 제공.
+- **주요 구현 내용**:
+  - `src/utils/dataTransfer.ts`:
+    - `exportData`: 현재 `quantities`(보유 수량)와 `wishes`(위시리스트 목표 수량)를 버전 및 타임스탬프 메타데이터를 포함한 JSON 파일(`cardfolio-backup-YYYYMMDD.json`)로 다운로드.
+    - `parseBackupFile`: 업로드된 JSON 파일의 버전(version 1) 및 유효성을 검증하여 파싱.
+  - `src/components/DataTransferDialog.tsx`:
+    - 내보내기 및 파일 업로드(불러오기) 모달 UI 구현.
+    - 불러오기 시 기존 브라우저 데이터를 덮어쓰기 전 백업 파일 내 보유 종류 수·위시리스트 수량 및 생성 일시를 표시하고 확인 단계를 거치도록 안전장치 마련.
+    - ESC 키 및 오버레이 클릭 닫기 지원.
+  - `src/app/App.tsx`:
+    - 상단 글로벌 내비게이션 바 우측에 데이터 관리 아이콘 버튼 추가.
+  - `src/styles/app.css`:
+    - 내비게이션 바 버튼, 모달 다이얼로그, 카드 레이아웃, 결과 및 확인 화면, 라이트 모드 대응 스타일 추가.
+  - `vite.config.ts`:
+    - 최신 Vite 빌드 환경 호환을 위해 `resolve.alias` 경로 설정을 `fileURLToPath` 기반으로 정리.
+- **검증**: `npm run typecheck` 및 `npm run build` 정상 통과.
+

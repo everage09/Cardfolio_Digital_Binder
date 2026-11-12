@@ -394,8 +394,8 @@ const packs = packDirs.map((packName) => {
 
   files.forEach((filename) => {
     const cardId = `${packId}:${filename}`
-    const imagePath = `/images/${encodeURIComponent(packName)}/${filename}`
     const sourceUrl = `https://cardfolio.idolmaster-official.jp/images/cardlist/${filename}`
+    const imagePath = sourceUrl
     const rarityInfo = getCardRarity(packName, filename)
     const idolIds = getCardIdolIds(packName, filename, cardIdolOrders)
     for (const idolId of idolIds ?? []) {
