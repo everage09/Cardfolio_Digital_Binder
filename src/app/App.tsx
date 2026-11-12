@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, Link } from 'react-router-dom'
 import cardsData from '../data/cards.json'
 import { CardsData } from '../types/card'
@@ -8,11 +8,13 @@ import { useWishlistStore } from '../stores/useWishlistStore'
 import { useThemeStore } from '../stores/useThemeStore'
 import { useCollectionStore } from '../stores/useCollectionStore'
 import { useCardBrowseStore } from '../stores/useCardBrowseStore'
+import { DataTransferDialog } from '../components/DataTransferDialog'
 
 const data = cardsData as unknown as CardsData
 
 const AppLayout: React.FC = () => {
-  const [homeResetKey, setHomeResetKey] = React.useState(0)
+  const [homeResetKey, setHomeResetKey] = useState(0)
+  const [isDataTransferOpen, setIsDataTransferOpen] = useState(false)
   const wishCount = useWishlistStore((state) => Object.keys(state.wishes).length)
   const theme = useThemeStore((state) => state.theme)
   const toggleTheme = useThemeStore((state) => state.toggleTheme)
@@ -68,6 +70,30 @@ const AppLayout: React.FC = () => {
               </NavLink>
             </div>
 
+            {/* 데이터 관리 (백업 / 복원) 버튼 */}
+            <button
+              className="data-transfer-nav-btn"
+              onClick={() => setIsDataTransferOpen(true)}
+              aria-label="데이터 백업 및 복원"
+              title="데이터 백업 및 복원"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                width="17"
+                height="17"
+                aria-hidden="true"
+              >
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+              </svg>
+            </button>
+
             {/* 다크 / 라이트 모드 토글 버튼 */}
             <button
               className="theme-toggle-btn"
@@ -88,6 +114,11 @@ const AppLayout: React.FC = () => {
           <Route path="/wishlist" element={<WishlistPage data={data} />} />
         </Routes>
       </main>
+
+      {/* 데이터 관리 (백업/복원) 다이얼로그 */}
+      {isDataTransferOpen && (
+        <DataTransferDialog onClose={() => setIsDataTransferOpen(false)} />
+      )}
     </div>
   )
 }

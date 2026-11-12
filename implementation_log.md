@@ -236,3 +236,24 @@ pm run build 정상 통과.
   - `.gitignore`: `src/data/cards.json` 제외 항목 삭제 → git에 포함하여 CI 빌드 시 사용 가능하게 함.
   - `src/data/cards.json`: `imagePath`가 공식 CDN URL로 갱신된 상태로 재생성 후 git 포함 대상으로 전환.
 - **검증**: `npm run build:card-data`, `npm run typecheck`, `npm run build` 정상 통과.
+
+
+### 2026-11-13 — 보유 수량 및 위시리스트 데이터 백업/복원(내보내기·불러오기) 기능 구현
+
+- **배경**: 별도의 DB/서버 없이 개인 브라우저 LocalStorage에만 저장되는 데이터를 다른 기기나 브라우저로 백업/이전할 수 있도록 JSON 기반의 데이터 이식성 기능 제공.
+- **주요 구현 내용**:
+  - `src/utils/dataTransfer.ts`:
+    - `exportData`: 현재 `quantities`(보유 수량)와 `wishes`(위시리스트 목표 수량)를 버전 및 타임스탬프 메타데이터를 포함한 JSON 파일(`cardfolio-backup-YYYYMMDD.json`)로 다운로드.
+    - `parseBackupFile`: 업로드된 JSON 파일의 버전(version 1) 및 유효성을 검증하여 파싱.
+  - `src/components/DataTransferDialog.tsx`:
+    - 내보내기 및 파일 업로드(불러오기) 모달 UI 구현.
+    - 불러오기 시 기존 브라우저 데이터를 덮어쓰기 전 백업 파일 내 보유 종류 수·위시리스트 수량 및 생성 일시를 표시하고 확인 단계를 거치도록 안전장치 마련.
+    - ESC 키 및 오버레이 클릭 닫기 지원.
+  - `src/app/App.tsx`:
+    - 상단 글로벌 내비게이션 바 우측에 데이터 관리 아이콘 버튼 추가.
+  - `src/styles/app.css`:
+    - 내비게이션 바 버튼, 모달 다이얼로그, 카드 레이아웃, 결과 및 확인 화면, 라이트 모드 대응 스타일 추가.
+  - `vite.config.ts`:
+    - 최신 Vite 빌드 환경 호환을 위해 `resolve.alias` 경로 설정을 `fileURLToPath` 기반으로 정리.
+- **검증**: `npm run typecheck` 및 `npm run build` 정상 통과.
+
